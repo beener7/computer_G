@@ -18,8 +18,8 @@ float		earthRotation = 0.0, moonRotation = 0.0, JupiterRotation = 0.0, EuropaRot
 
 float		earth_rotation_speed = 0.2;
 float		moon_rotation_speed = 2;
-float		Jupiter_rotation_speed = 1.5;
-float		Europa_rotation_speed = 0.7;
+float		Jupiter_rotation_speed = 1.3;
+float		Europa_rotation_speed = 0.9;
 
 void init(void) {
 	glMatrixMode(GL_PROJECTION);
