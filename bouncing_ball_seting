@@ -34,10 +34,10 @@ void init(void) {
 	moving_ball.y = height / 4;
 
 	//  컨트롤바 초기좌표
-	bar1.x = left; bar1.y = -0.5;
-	bar2.x = 0.5; bar2.y = -0.5;
-	bar3.x = 0.5; bar3.y = 0.5;
-	bar4.x = -0.5; bar4.y = 0.5;
+	bar1.x = 100; bar1.y = 100;
+	bar2.x = 300; bar2.y = 100;
+	bar3.x = 100; bar3.y = 200;
+	bar4.x = 300; bar4.y = 200;
 	
 
 	velocity.x = 0.0;
@@ -54,9 +54,9 @@ void MyReshape(int w, int h) {
 	gluOrtho2D(left, left + width, bottom, bottom + height); // mouse2()
 }
 
-void control_bar()
+void Modeling_control_bar()
 {
-	glBegin(GL_LINES);
+	glBegin(GL_POLYGON);
 	glVertex2f(bar1.x,bar1.y);
 	glVertex2f(bar2.x, bar2.y);
 	glVertex2f(bar3.x, bar3.y);
@@ -113,6 +113,10 @@ void RenderScene(void) {
 		if (collision_count % 2)
 			Modeling_Circle(radius1, fixed_ball);
 	}
+
+	glColor3f(0, 0, 0);
+	Modeling_control_bar();
+
 
 
 	// 충돌 처리 부분
