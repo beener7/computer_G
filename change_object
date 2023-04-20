@@ -1,0 +1,153 @@
+/*
+ 응용 소프트웨어 공학과 20193205 조상연
+ 교수님이 강의 자료에 올려주신 코드를 바탕으로 변경하여 과제를 수행하였습니다. 
+ 제가 추가한 코드에는 주석을 추가했습니다.
+*/
+
+#include <windows.h>
+#include <math.h>
+#include <gl/gl.h>
+#include <gl/glut.h> // (or others, depending on the system in use)
+
+
+#define		PI				3.1415926 
+#define		Window_Width	500
+#define		Window_Height	500
+
+int			model_type = GL_POLYGON;
+
+int			num = 10; // 각의 갯수
+float		radius = 100; //반지름
+float		start_angle = 0.0;
+float       r = 1.0, g = 1.0, b = 0.0; // 색 변수
+int count = 0 , left = -250 , right = 250 , top = -250, bottom = 250; // 좌표변수
+
+void MyReshape(int w, int h) {  // 화면이 시작되거나 변경될때 동작하는 함수
+	glViewport(0 , 0 , w  , h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(left, right, top, bottom);  //처음 clipping 값
+}
+
+void Modeling_Circle(void) { // 중간 도형 그리는 함수
+	float	delta, theta; 
+	float	x, y;
+
+	switch(count) // 색변경을 하는 스위치문
+	{
+	case 1:r = 1.0, g = 0.0, b = 0.0; break;
+	case 2:r = 0.0, g = 1.0, b = 0.0; break;
+	case 3:r = 0.0, g = 0.0, b = 1.0; break;
+	case 4:r = 1.0, g = 1.0, b = 0.0; break;
+	case 5:r = 1.0, g = 0.0, b = 1.0; break;
+	case 6:r = 0.0, g = 1.0, b = 1.0; break;
+	case 7:r = 1.0, g = 1.0, b = 1.0; count = 0; break;
+	default:	break;
+	} // 1부터 시작해서 P를 누를때마다 카운터 증가, 색변경
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(left, right, top, bottom); //clipping 값 변경
+
+	glColor3f(r, g, b);
+	glPointSize(3.0);
+	delta = 2 * PI / num;
+
+	glBegin(model_type); 
+	for (int i = 0; i < num; i++) {
+		theta = start_angle + delta * i;
+		x = radius * cos(theta);
+		y = radius * sin(theta);
+		glVertex2f(x, y);
+	}
+	glEnd();
+}
+
+void Modeling_Axis(void) {
+	glBegin(GL_LINES);
+	glColor3f(1.0, 0.0, 0.0);
+	glVertex2f(-250.0, 0.0);
+	glVertex2f(250.0, 0.0);
+
+	glColor3f(0.0, 0.0, 1.0);
+	glVertex2f(0, -250.0);
+	glVertex2f(0, 250.0);
+	glEnd();
+}
+
+void Modeling_Rectangle(void) {
+	glColor3f(0.0, 1.0, 0.0);
+	glBegin(GL_POLYGON);
+	glVertex2i(100, 100);
+	glVertex2i(150, 100);
+	glVertex2i(150, 150);
+	glVertex2i(100, 150);
+	glEnd();
+}
+
+void Modeling_Ground(void) {
+	glColor3f(1.0, 0.0, 1.0);
+	glBegin(GL_POLYGON);
+	glVertex2i(250, 250);
+	glVertex2i(-250, 250);
+	glVertex2i(-250, -250);
+	glVertex2i(250, -250);
+	glEnd();
+}
+
+void RenderScene(void) {
+	glClearColor(0.5, 0.5, 0.5, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	Modeling_Rectangle();	// 1사분면에 있는 정사각형 
+	Modeling_Axis();		// x축과 y축 
+	Modeling_Circle();		// 반지름의 크기가 100인 원
+
+	glFlush();
+}
+
+
+void MyKey(unsigned char key, int x, int y) {
+
+	switch (key) {
+	case 'a':	num++; //a키를 누를시 각 갯수 증가
+		break; 
+	case 'd':   num--; break; //d 키를 누를시 각 갯수 감소
+	case 'p':   count++; break; // p키를 누를시 count를 늘여서 색변경
+
+	default:	break;
+	}
+	glutPostRedisplay(); //변경사항 적용
+}
+
+void SpecialKey(int key, int x, int y) {
+
+	switch (key) {
+	case GLUT_KEY_F1:	model_type = GL_POINTS;		break; //F!을 누를시 점들의 집합
+	case GLUT_KEY_F2:	model_type = GL_POLYGON;	break; // F2를 누를시 도형
+	case GLUT_KEY_F3:	model_type = GL_LINE_LOOP;	break; //F3 선으로 이루어진 도형
+	case GLUT_KEY_F4:	model_type = GL_LINES;	break; //F4를 누를시 선의 집합
+
+	case GLUT_KEY_LEFT: left -= 1; right -= 1; break; // 왼쪽 방향키를 누를시 카메라를 왼쪽으로 이동
+	case GLUT_KEY_RIGHT: left += 1; right += 1; break;// 오른쪽 방향키를 누를시 카메라를 오른쪽으로 이동
+	case GLUT_KEY_UP:top++; bottom++; break; // 위쪽 방향키를 누를시 카메라를 위로 이동
+	case GLUT_KEY_DOWN:top--; bottom--; break; // 아래쪽 방향키를 누를시 카메라를 아래로 이동
+
+	default:	break;
+	}
+	glutPostRedisplay();
+}
+
+int main(int argc, char** argv) {
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(Window_Width, Window_Height);
+	glutCreateWindow("N-Polygon & Keyboard Event");
+	glutDisplayFunc(RenderScene);
+	glutReshapeFunc(MyReshape);
+	glutKeyboardFunc(MyKey);
+	glutSpecialFunc(SpecialKey);
+	glutMainLoop();
+	return 0;
+}
