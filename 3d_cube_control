@@ -6,7 +6,7 @@
 #define	PI	3.1415926
 
 float radius, theta, phi;
-float delta_theta, delta_phi,delta_R;
+float delta_theta, delta_phi, delta_R;
 
 GLfloat		vertices[][3] = {
 		{ -1.0, -1.0,  1.0 },		// 0 
@@ -55,9 +55,10 @@ void Init()
 	radius = 5.0;
 	theta = 0.5; // 경도
 	phi = 0.5; // 위도
-	delta_theta = 0.3;
-	delta_phi = 0.3;
-	delta_R = 0.3;
+	delta_theta = 0.1;
+	delta_phi = 0.1;
+	delta_R = 0.1;
+
 	glEnable(GL_DEPTH_TEST); // 눈에 보이는 부분만 출력해주는 함수
 }
 
@@ -97,6 +98,8 @@ void frame_reset(void) {
 
 void camera(void) {
 	float x, y, z;
+	float temp = 1.0;
+
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
@@ -104,8 +107,18 @@ void camera(void) {
 	y = radius * cos(phi) * sin(theta);
 	z = radius * sin(phi);
 
+
+	printf("x = %f ", x);
+	printf("y = %f ", y);
+	printf("z = %f ", z);
+	printf("phi = %f ", phi);
+	printf("\n");
+	if( y < 0 )
+	{
+		temp = temp * -1;
+	}
 	//gluLookAt(3.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
-	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, temp);
 }
 
 
@@ -116,28 +129,32 @@ void display(void)
 	camera();
 	axis();
 	cube();
-	
+
 
 	glFlush();
 	glutSwapBuffers();
 }
 
-void Myspecial(int key,int x,int y)
+void Myspecial(int key, int x, int y)
 {
-	switch(key)
+	switch (key)
 	{
 
 	case GLUT_KEY_LEFT:
 		theta -= delta_theta;
+
 		break;
 	case GLUT_KEY_RIGHT:
 		theta += delta_theta;
+
 		break;
 	case GLUT_KEY_UP:
 		phi += delta_phi;
+
 		break;
 	case GLUT_KEY_DOWN:
-		phi-= delta_phi;
+		phi -= delta_phi;
+
 		break;
 	case GLUT_KEY_F1:
 		radius += delta_R;
