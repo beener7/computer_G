@@ -8,6 +8,8 @@
 float radius, theta, phi;
 float delta_theta, delta_phi, delta_R;
 
+bool check;
+
 GLfloat		vertices[][3] = {
 		{ -1.0, -1.0,  1.0 },		// 0 
 		{ -1.0,  1.0,  1.0 },		// 1
@@ -44,7 +46,6 @@ void cube(void) {
 	polygon(2, 3, 7, 6);
 	polygon(1, 2, 6, 5);
 	polygon(3, 0, 4, 7);
-
 	polygon(5, 4, 0, 1);
 	polygon(0, 3, 2, 1);
 
@@ -58,6 +59,7 @@ void Init()
 	delta_theta = 0.1;
 	delta_phi = 0.1;
 	delta_R = 0.1;
+	check = false;
 
 	glEnable(GL_DEPTH_TEST); // 눈에 보이는 부분만 출력해주는 함수
 }
@@ -112,10 +114,13 @@ void camera(void) {
 	printf("y = %f ", y);
 	printf("z = %f ", z);
 	printf("phi = %f ", phi);
+	printf("theta = %f ", theta);
 	printf("\n");
-	if( y < 0 )
+	if (y < 0)
 	{
-		temp = temp * -1;
+		if (check = true) {
+			temp = temp * -1;
+		}
 	}
 	//gluLookAt(3.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
 	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, temp);
@@ -141,20 +146,20 @@ void Myspecial(int key, int x, int y)
 	{
 
 	case GLUT_KEY_LEFT:
+		check = false;
 		theta -= delta_theta;
-
 		break;
 	case GLUT_KEY_RIGHT:
+		check = false;
 		theta += delta_theta;
-
 		break;
 	case GLUT_KEY_UP:
+		check = true;
 		phi += delta_phi;
-
 		break;
 	case GLUT_KEY_DOWN:
+		check = true;
 		phi -= delta_phi;
-
 		break;
 	case GLUT_KEY_F1:
 		radius += delta_R;
