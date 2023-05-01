@@ -118,7 +118,7 @@ void camera(void) {
 	printf("\n");
 	if (y < 0)
 	{
-		if (check = true) {
+		if (check == true) {
 			temp = temp * -1;
 		}
 	}
