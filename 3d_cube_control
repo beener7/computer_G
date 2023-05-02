@@ -7,7 +7,7 @@
 
 float radius, theta, phi;
 float delta_theta, delta_phi, delta_R;
-
+float y;
 bool check;
 
 GLfloat		vertices[][3] = {
@@ -60,7 +60,7 @@ void Init()
 	delta_phi = 0.1;
 	delta_R = 0.1;
 	check = false;
-
+	y = radius * cos(phi) * sin(theta);
 	glEnable(GL_DEPTH_TEST); // 눈에 보이는 부분만 출력해주는 함수
 }
 
@@ -99,7 +99,7 @@ void frame_reset(void) {
 }
 
 void camera(void) {
-	float x, y, z;
+	float x, z;
 	float temp = 1.0;
 
 	glMatrixMode(GL_MODELVIEW);
@@ -115,6 +115,7 @@ void camera(void) {
 	printf("z = %f ", z);
 	printf("phi = %f ", phi);
 	printf("theta = %f ", theta);
+	printf(check ? "true" : "false");
 	printf("\n");
 	if (y < 0)
 	{
@@ -140,7 +141,7 @@ void display(void)
 	glutSwapBuffers();
 }
 
-void Myspecial(int key, int x, int y)
+void Myspecial(int key, int x, int yz)
 {
 	switch (key)
 	{
@@ -154,11 +155,14 @@ void Myspecial(int key, int x, int y)
 		theta += delta_theta;
 		break;
 	case GLUT_KEY_UP:
-		check = true;
+		
+		if(y>0){ check = true; }
+		
 		phi += delta_phi;
 		break;
 	case GLUT_KEY_DOWN:
-		check = true;
+		if(y>0){ check = true; }
+		
 		phi -= delta_phi;
 		break;
 	case GLUT_KEY_F1:
