@@ -1,4 +1,4 @@
-#include <windows.h>
+#include <windows.h>https://github.com/beener7/computer_G/blob/main/Bezier
 #include <math.h>
 #include <gl/gl.h>
 #include <gl/glut.h> // (or others, depending on the system in use)
