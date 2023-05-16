@@ -1,0 +1,360 @@
+#include <windows.h>
+#include <math.h>
+#include <gl/gl.h>
+#include <gl/glut.h>
+#include <stdio.h>
+#include <iostream>
+using namespace std;
+
+#define	PI	3.1415926
+#define CAM1 1
+#define CAM2 2
+
+int		On_camera;
+int		camera_viewing;
+
+float	theta = 0.5;
+float	phi = 0.0;
+float	radius = 10.0;
+int		curve_degree;
+int		Moving_On, Camera_Free;
+float	animation_time, delta_time;
+
+typedef struct _Position {
+	float	x;
+	float	y;
+	float	z;
+} Position;
+
+Position camera1, camera2, current_camera;
+
+GLfloat		vertices[][3] = {
+	{ -1.0, -1.0,  1.0 },	// 0 
+	{ -1.0,  1.0,  1.0 },	// 1
+	{ 1.0,  1.0,  1.0 },	// 2
+	{ 1.0, -1.0,  1.0 },	// 3
+	{ -1.0, -1.0, -1.0 },	// 4
+	{ -1.0,  1.0, -1.0 },	// 5
+	{ 1.0,  1.0, -1.0 },	// 6
+	{ 1.0, -1.0, -1.0 } };	// 7
+
+GLfloat		colors[][3] = {
+	{ 1.0, 0.0, 0.0 },	// red
+	{ 0.0, 1.0, 0.0 },	// green
+	{ 0.0, 0.0, 1.0 },	// blue
+	{ 1.0, 1.0, 1.0 },	// white
+	{ 1.0, 1.0, 0.0 },	// yellow
+	{ 1.0, 0.0, 1.0 } };	// magenta
+
+int p_num = 4;
+
+float	camera_control_point[][3] = {
+	{ 5.0, 5.0, 5.0},
+	{ 2.0,  -0.5, 2.0 },
+	{ -2.0, -0.5, -2.0 },
+	{ -5.0, 5.0, -5.0 },
+	};
+
+
+float	last_camera_x, last_camera_y, last_camera_z;
+
+
+Position Bezier_point(float);
+
+void init(void)
+{
+	radius = 10.0;
+	theta = 0.5;
+	phi = 0.2;
+	camera1.x = radius * cos(theta) * cos(phi);
+	camera1.y = radius * sin(theta) * cos(phi);
+	camera1.z = radius * sin(phi);
+
+	animation_time = 0.0;
+	camera2 = Bezier_point(0.0);
+	delta_time = 0.001;
+	Moving_On = 0;
+	On_camera = CAM1;
+	camera_viewing = 1;
+	glEnable(GL_DEPTH_TEST);
+}
+
+
+int	Factorial(int k) {
+	if (k <= 1)
+		return 1;
+	else {
+		return k * Factorial(k - 1);
+	}
+}
+
+double Combination(int n, int k) {
+	double	value;
+	if (n >= 1 && k <= n)
+		value = Factorial(n) / (Factorial(n - k) * Factorial(k));
+	else
+		value = 1;
+	return value;
+}
+
+double Bernstein(int n, int k, double time) {
+	double value;
+	if (0.0 <= time && time <= 1.0)
+		value = Combination(n, k) * pow(1.0 - time, n - k) * pow(time, k);
+	else
+		value = 1.0;
+	return value;
+}
+
+
+void polygon(int a, int b, int c, int d) {
+	glColor3fv(colors[a]);
+	glBegin(GL_POLYGON);
+	glVertex3fv(vertices[a]);
+	glVertex3fv(vertices[b]);
+	glVertex3fv(vertices[c]);
+	glVertex3fv(vertices[d]);
+	glEnd();
+}
+
+void cube(void) {
+	polygon(0, 3, 2, 1);
+	polygon(2, 3, 7, 6);
+	polygon(3, 0, 4, 7);
+	polygon(1, 2, 6, 5);
+	polygon(4, 5, 6, 7);
+	polygon(5, 4, 0, 1);
+}
+
+
+void camera_projection_type(void) {
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	if (camera_viewing % 2)
+		gluPerspective(55.0, 1.0, 1.0, 30.0);
+	else
+		glOrtho(-5.0, 5.0, -5.0, 5.0, 1.0, 30.0);
+}
+
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	camera_projection_type();
+}
+
+void axis(void) {
+	glBegin(GL_LINES);
+	glColor3f(1.0, 0.0, 0.0); // x축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(10.0, 0.0, 0.0);
+
+	glColor3f(0.0, 1.0, 0.0); // y축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 10.0, 0.0);
+
+	glColor3f(0.0, 0.0, 1.0); // z축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 0.0, 10.0);
+	glEnd();
+}
+
+Position Bezier_point(float curve_time) {
+	Position	c_point;
+	int			curve_degree;
+	float		function_value;
+	float		sumx = 0.0, sumy = 0.0, sumz = 0.0;
+
+	curve_degree = p_num - 1;
+	for (int k = 0; k <= curve_degree; k++) {
+		function_value = Bernstein(curve_degree, k, curve_time);
+		sumx += function_value * camera_control_point[k][0];
+		sumy += function_value * camera_control_point[k][1];
+		sumz += function_value * camera_control_point[k][2];
+	}
+	c_point.x = sumx;
+	c_point.y = sumy;
+	c_point.z = sumz;
+
+	return c_point;
+}
+
+void camera_setting(float time) {
+
+	camera2 = Bezier_point(time);
+	if (On_camera == CAM1) {
+		camera1.x = radius * cos(theta) * cos(phi);
+		camera1.y = radius * sin(theta) * cos(phi);
+		camera1.z = radius * sin(phi);
+		current_camera = camera1;
+	}
+	else if (On_camera == CAM2)
+		current_camera = camera2;
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(current_camera.x, current_camera.y, current_camera.z, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0); //카메라 위치 3개 응시점 3개(0,0,0을 보도록) 축
+	//gluLookAt(5.0,4.0,2.0,current_camera.x, current_camera.y, current_camera.z,0.0, 0.0, 1.0);
+
+}
+
+
+void cube_man(void) {
+
+	glPushMatrix();
+
+	cube();
+
+	glPushMatrix();
+	glTranslatef(3.0, 0.0, 0.0);
+	cube();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(-3.0, 0.0, 0.0);
+	cube();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0, 3.0, 0.0);
+	cube();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0, -3.0, 0.0);
+	cube();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, 3.0);
+	cube();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, -3.0);
+	cube();
+	glPopMatrix();
+	glPopMatrix();
+}
+
+
+void Bezier_Curve(void) {
+	double	time;
+	double	function_value;
+	double  partial_time;
+	int		curvepoint_num = 100;
+	Position new_point;
+
+	partial_time = 1.0 / curvepoint_num;
+
+	glColor3f(1.0, 1.0, 0.0);
+	glLineWidth(3.0);
+	glBegin(GL_LINE_STRIP);
+	for (time = 0.0; time <= 1.0; time += partial_time) {
+		new_point = Bezier_point(time);
+		glVertex3f(new_point.x, new_point.y, new_point.z);
+	}
+	glEnd();
+	glLineWidth(1.0);
+}
+
+
+void moving_type(void) {
+	if (Moving_On % 2 == 0) {
+		if (animation_time >= 1.0)
+			animation_time = 0.0;
+	}
+	else if (Moving_On % 2 == 1) {
+		if (animation_time >= 1.0)
+			animation_time = 1.0;
+		else
+			animation_time += delta_time;
+	}
+}
+
+
+void camers_position(void) {
+	glColor3f(0.0, 0.0, 1.0);
+	glPushMatrix();
+	glTranslatef(camera1.x, camera1.y, camera1.z);
+	glutSolidSphere(0.2, 10, 10);
+	glPopMatrix();
+
+	glColor3f(0.0, 1.0, 0.0);
+	glPushMatrix();
+	glTranslatef(camera2.x, camera2.y, camera2.z);
+	glutSolidSphere(0.2, 10, 10);
+	glPopMatrix();
+}
+
+
+void display(void)
+{
+	glClearColor(0.5, 0.5, 0.5, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	moving_type();
+	camera_projection_type();
+	camera_setting(animation_time);
+	axis();
+
+	cube_man();
+	Bezier_Curve();
+	camers_position();
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+void special_key(int key, int x, int y)
+{
+	switch (key) {
+	case GLUT_KEY_LEFT:		theta += 0.01;		break;
+	case GLUT_KEY_RIGHT:	theta -= 0.01;		break;
+	case GLUT_KEY_UP:		phi += 0.01;		break;
+	case GLUT_KEY_DOWN:		phi -= 0.01;		break;
+	default: break;
+	}
+	glutPostRedisplay();
+}
+
+void Mykey(unsigned char key, int x, int y)
+{
+	switch (key) {
+	case '1':		On_camera = CAM1;		break;
+	case '2':		On_camera = CAM2;		break;
+	case '3':		camera_viewing = 0;		break;
+	case '4':		camera_viewing = 1;		break;
+	case 'a':		radius += 0.1;			break;
+	case 's':		radius -= 0.1;			break;
+	case 'z':		Moving_On++;			break;
+	default: break;
+	}
+	glutPostRedisplay();
+}
+
+
+int main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("camera movement on a 3D Bezier curve");
+	init();
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutSpecialFunc(special_key);
+	glutKeyboardFunc(Mykey);
+	glutIdleFunc(display);
+	glutMainLoop();
+	return 0;
+}
+
+
+
+
+
+
+
+
