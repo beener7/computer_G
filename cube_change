@@ -1,0 +1,316 @@
+#include <gl/glut.h>
+#include <gl/gl.h>
+#include <stdio.h>
+#include <math.h>
+#include <iostream>
+
+#define	PI	3.1415926
+
+float radius, theta, phi;
+float delta_theta, delta_phi, delta_R;
+float y;
+bool check;
+int		Moving_On;
+float	animation_time, delta_time;
+float	animation_time2, delta_time2;
+bool change = false;
+
+GLfloat		vertices[][3] = {
+		{ -1.0, -1.0,  1.0 },		// 0 
+		{ -1.0,  1.0,  1.0 },		// 1
+		{ 1.0,  1.0,  1.0 },		// 2
+		{ 1.0, -1.0,  1.0 },		// 3
+		{ -1.0, -1.0, -1.0 },		// 4
+		{ -1.0,  1.0, -1.0 },		// 5
+		{ 1.0,  1.0, -1.0 },		// 6
+		{ 1.0, -1.0, -1.0 } };		// 7
+
+/*
+GLfloat		vertices[][3] = {
+		{ 0.0, 0.0,  2.0 },		// 0 
+		{ 0.0,  2.0,  2.0 },		// 1
+		{ 2.0,  2.0,  2.0 },		// 2
+		{ 2.0, 0.0,  2.0 },		// 3
+		{ 0.0, 0.0, 0.0 },		// 4
+		{ 0.0,  2.0, 0.0 },		// 5
+		{ 2.0,  2.0, 0.0 },		// 6
+		{ 2.0, 0.0, 0.0 } };		// 7
+*/
+
+
+GLfloat		colors[][3] = {
+		{ 1.0, 0.0, 0.0 },			// red
+		{ 0.0, 1.0, 0.0 },			// green 
+		{ 1.0, 1.0, 0.0 },			// yellow
+		{ 1.0, 1.0, 1.0 },			// white
+		{ 0.0, 0.0, 1.0 },			// blue
+		{ 1.0, 0.0, 1.0 } };		// magenta
+
+
+void polygon(int a, int b, int c, int d) {
+	glColor3fv(colors[a]);
+	glBegin(GL_POLYGON);
+	glVertex3fv(vertices[a]);
+	glVertex3fv(vertices[b]);
+	glVertex3fv(vertices[c]);
+	glVertex3fv(vertices[d]);
+	glEnd();
+}
+
+
+void cube(void) {
+	//변수는 총 2개 각도랑 길이 // 길이를 length, 각도를 angle
+
+	float angle_MAX = 90;
+	float length_MAX = 2;
+	float length2_MAX = 0.4;
+
+	float angle = 0;
+	float length = 0;
+	float length2 = 0;
+	//angle += angle_MAX / animation_time;
+	// 버튼을 누르면 각도가 0도에서 90도로 올라가고 동시에 트랜스레이트도 같이 증가
+	// 애니메이션타임 -> 0.1 -> 1.0까지 1씩 증가 1이 됬을때 90 0일땐 0
+
+	angle = angle_MAX * animation_time;
+	length = length_MAX * animation_time; 
+	length2 = length2_MAX * animation_time2;
+
+
+	polygon(4, 5, 6, 7); // 파
+
+	glPushMatrix();
+	glTranslatef(0.0, 0.0, length); //빨
+	polygon(0, 3, 2, 1);
+	glPopMatrix();
+
+	glPushMatrix();
+	
+	glRotatef(angle, 0.0, 1.0, 0.0);
+	glTranslatef(length2, 0.0, length);
+	polygon(2, 3, 7, 6);  // 노
+	glPopMatrix();
+
+	glPushMatrix();
+	glRotatef(angle, 1.0, 0.0, 0.0);
+	glTranslatef(0.0, -length2, length);
+	polygon(3, 0, 4, 7); //흰
+	glPopMatrix();
+
+	glPushMatrix();
+	glRotatef(-angle, 0.0, 1.0, 0.0);
+	glTranslatef(-length2, 0.0, length);
+	polygon(5, 4, 0, 1); // 보
+	glPopMatrix();
+	
+	glPushMatrix();
+	glRotatef(-angle, 1.0, 0.0, 0.0);
+	glTranslatef(0.0, length2, length);
+	polygon(1, 2, 6, 5); //초
+	glPopMatrix();
+
+	
+}
+
+void Init()
+{
+	radius = 15.0;
+	theta = 0.5; // 경도
+	phi = 0.5; // 위도
+	delta_theta = 0.1;
+	delta_phi = 0.1;
+	delta_R = 0.1;
+	check = false;
+	Moving_On = 0;
+
+	animation_time = 0.0;
+	delta_time = 0.001;
+
+	animation_time2 = 0.0;
+	delta_time2 = 0.002;
+
+	y = radius * cos(phi) * sin(theta);
+	glEnable(GL_DEPTH_TEST); // 눈에 보이는 부분만 출력해주는 함수
+}
+
+void moving_type(void) {
+	if (Moving_On % 2 == 0) {
+		if (animation_time >= 1.0)
+			animation_time = 0.0;
+	}
+	else if (Moving_On % 2 == 1) {
+		if (animation_time >= 1.0)
+			animation_time = 1.0;
+		else {
+			animation_time += delta_time;
+		}
+		if(animation_time2 >=1.0 && check == false)
+		{
+			check = true;
+			delta_time2 = delta_time2 * -1;
+		}
+		else
+		{
+			animation_time2 += delta_time2;
+		}
+	}
+}
+
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(60.0, 1.0, 1.0, 20.0); // 사람이 보는것처럼(원근법 있음)
+	//glOrtho(-5.0, 5.0, -5.0, 5.0, -10.0, 10.0);
+	// 카메라 입장의 좌표계
+}
+
+void axis(void) {
+
+	glBegin(GL_LINES);
+	glColor3f(1.0, 0.0, 0.0); // x축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(10.0, 0.0, 0.0);
+
+	glColor3f(0.0, 1.0, 0.0); // y축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 10.0, 0.0);
+
+	glColor3f(0.0, 0.0, 1.0); // z축 
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 0.0, 10.0);
+	glEnd();
+}
+
+void frame_reset(void) {
+	glClearColor(0.6, 0.6, 0.6, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void camera(void) {
+	float x, z;
+	float temp = 1.0;
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	x = radius * cos(phi) * cos(theta);
+	y = radius * cos(phi) * sin(theta);
+	z = radius * sin(phi);
+
+/*
+	printf("x = %f ", x);
+	printf("y = %f ", y);
+	printf("z = %f ", z);
+	printf("phi = %f ", phi);
+	printf("theta = %f ", theta);
+	printf(check ? "true" : "false");
+	printf("\n");*/
+	if (y < 0)
+	{
+		if (check == true) {
+			temp = temp * -1;
+		}
+	}
+	//gluLookAt(3.0, 4.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, temp);
+}
+
+
+void display(void)
+{
+	frame_reset();
+
+	camera();
+	axis();
+	moving_type();
+	cube();
+	
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+void MyKey(unsigned char key, int x, int y) {
+
+	switch (key) {
+	case 't': Moving_On++; 
+		break;
+
+
+	default:	break;
+	}
+	glutPostRedisplay(); //변경사항 적용
+}
+
+
+
+void Myspecial(int key, int x, int yz)
+{
+	switch (key)
+	{
+
+	case GLUT_KEY_LEFT:
+		check = false;
+		theta -= delta_theta;
+		break;
+	case GLUT_KEY_RIGHT:
+		check = false;
+		theta += delta_theta;
+		break;
+	case GLUT_KEY_UP:
+
+		if (y > 0) { check = true; }
+
+		phi += delta_phi;
+		break;
+	case GLUT_KEY_DOWN:
+		if (y > 0) { check = true; }
+
+		phi -= delta_phi;
+		break;
+	case GLUT_KEY_F1:
+		radius += delta_R;
+		break;
+	case GLUT_KEY_F2:
+		radius -= delta_R;
+		break;
+	default: break;
+
+	}
+	glutPostRedisplay();
+}
+
+void RenderScene(void) 
+{
+	frame_reset();
+
+	camera();
+	axis();
+	moving_type();
+	cube();
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+
+void main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("cube");
+	Init();
+	glutSpecialFunc(Myspecial);
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutKeyboardFunc(MyKey);
+	glutIdleFunc(RenderScene);
+	glutMainLoop();
+}
+
+
