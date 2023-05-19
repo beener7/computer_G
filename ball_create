@@ -13,10 +13,11 @@ using namespace std;
 #define		M	18			// 위도 180도를 나누고자 하는 조각 수
 
 
-float	ver[N][M + 1][3];	// 구면 상의 점들의 집합
+float	ver[N+1][M + 1][3];	// 구면 상의 점들의 집합
 float	sphere_radius;		// 구면의 반경
 float	theta;
 float	pi;
+int		model_type = GL_POLYGON;
 
 // 카메라 관련 변수
 float	camera_radius, camera_theta, camera_phi;
@@ -42,12 +43,13 @@ void axis(void) {
 
 void Moedling()
 {
-	for(int j=0;j<M;j++)
+	for(int j=0;j<=M;j++)
 	{
-		for(int i=0;i<N;i++)
+		for(int i=0;i<N - 1;i++)
 		{
 			glColor3f(1.0, 1.0, 1.0);
-			glBegin(GL_POLYGON);
+			//glBegin(GL_LINE_STRIP);
+			glBegin(model_type);
 			glVertex3f(ver[i][j][0], ver[i][j][1], ver[i][j][2]);
 			glVertex3f(ver[i+1][j][0], ver[i + 1][j][1], ver[i + 1][j][2]);
 			glVertex3f(ver[i+1][j+1][0], ver[i + 1][j + 1][1], ver[i + 1][j + 1][2]);
@@ -161,6 +163,8 @@ void special_key(int key, int x, int y)
 	case GLUT_KEY_RIGHT:	camera_theta += 0.01;	break;
 	case GLUT_KEY_UP:		camera_phi += 0.01;		break;
 	case GLUT_KEY_DOWN:		camera_phi -= 0.01;		break;
+	case GLUT_KEY_F1:		model_type = GL_LINE_STRIP; break;
+	case GLUT_KEY_F2:		model_type = GL_POLYGON; break;
 	default: break;
 	}
 	Adjust_camera_up_vector();
