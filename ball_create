@@ -57,6 +57,12 @@ void Moedling()
 			glEnd();
 
 		}
+		glBegin(model_type);
+		glVertex3f(ver[N-1][j][0], ver[N-1][j][1], ver[N-1][j][2]);
+		glVertex3f(ver[0][j][0], ver[0][j][1], ver[0][j][2]);
+		glVertex3f(ver[0][j + 1][0], ver[0][j + 1][1], ver[0][j + 1][2]);
+		glVertex3f(ver[N-1][j + 1][0], ver[N-1][j + 1][1], ver[N-1][j + 1][2]);
+		glEnd();
 	}
 }
 
