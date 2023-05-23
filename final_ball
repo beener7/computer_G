@@ -89,7 +89,8 @@ void init(void) {
 		}
 	}
 
-	//필드 모서리를 각 각 a b c d e        f g h i j 라 할때
+	//필드 모서리를 각 각 a b c d e        f g h i j 라 할때 //필드 좌표(1150 450) (1083.02, 699.993) (900.013 , 883.005) ( 650.023, 950) (400.027 , 883.028) (217.007 , 700.033)
+	//                                                                  (150, 450.046) (216.96, 200.047) (399.947, 17.0182) (649.931 - 50) (899.933 , 16.9488) (1082.97, 199.927) 
 	// 왼쪽 4개
 	
 	a.x = 400.027;	a.y = 883.028;
@@ -117,19 +118,19 @@ Point CalculateNormal(const Point& p1,const Point& p2 )
 	return normalVector;
 }
 
-Point Normalize(const Point& v)
+Point Normalize(const Point& v) //벡터를 정규화
 {
-	float length = std::sqrt(v.x * v.x + v.y * v.y);
+	float length = std::sqrt(v.x * v.x + v.y * v.y); // 벡터의 길이를 계산
 	Point normalized = { v.x / length, v.y / length };
 	return normalized;
 }
 
-Point Reflect(const Point& direction, const Point& normal)
+Point Reflect(const Point& direction, const Point& normal) // 반사벡터를 계산
 {
 	Point normalizedDirection = Normalize(direction);
 	Point normalizedNormal = Normalize(normal);
 
-	float dotProduct = normalizedDirection.x * normalizedNormal.x + normalizedDirection.y * normalizedNormal.y;
+	float dotProduct = normalizedDirection.x * normalizedNormal.x + normalizedDirection.y * normalizedNormal.y; // 내적연산
 	Point reflection = { normalizedDirection.x - 2.0f * dotProduct * normalizedNormal.x, normalizedDirection.y - 2.0f * dotProduct * normalizedNormal.y };
 	return reflection;
 
@@ -345,30 +346,6 @@ void Collision_Detection_to_Walls(void) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	if (moving_ball.x - moving_ball_radius <= left)
 		velocity.x = velocity.x * -1;
 
@@ -419,9 +396,17 @@ void RenderScene(void) {
 	Collision_bar();
 	create_black();
 	
+	glColor3f(1, 0, 0);
+	glBegin(GL_LINES);
+	glVertex2f(a.x, a.y+10);
+	glVertex2f(f.x, f.y+10);
+	glEnd();
 
+	glBegin(GL_LINES);
+	glVertex2f(e.x, e.y-10);
+	glVertex2f(j.x, j.y-10);
+	glEnd();
 
-	
 
 
 	glutSwapBuffers();
