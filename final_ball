@@ -1,0 +1,471 @@
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glut.h> // (or others, depending on the system in use)
+#include <math.h>
+#include <iostream>
+
+#define	width 			1300
+#define	height			900
+#define	PI				3.1415
+#define	polygon_num		50
+#define field			12
+
+int		left = 0, right = left + width;
+int		bottom = 0, top = bottom + height;
+
+int		ball_speed;
+int		collision_count = 0;
+
+float	radius1, moving_ball_radius;
+float	field_radius;
+int count = 0;
+
+int bar1_x = 600, bar1_y = 50;
+int bar2_x = 600, bar2_y = 870;
+
+int MAX_black_num = 10;
+int counting = 0;
+
+int brick_height = 50;
+int brick_widht = 50;
+
+const int brickRows = 7;
+const int brickCols = 10;
+int bar_speed;
+bool bricks[brickRows][brickCols];
+
+typedef struct _Point {
+	float	x;
+	float	y;
+} Point;
+
+Point	fixed_ball, moving_ball, velocity;
+Point	bar1, bar2, bar3, bar4;
+Point	bar_2_1, bar_2_2, bar_2_3, bar_2_4;
+Point	a, b, c, d, e, f, g, h , i, j;
+
+void init(void) {
+	radius1 = 20.0;
+	fixed_ball.x = width / 2;
+	fixed_ball.y = height / 2;
+
+	moving_ball_radius = 10.0;
+	moving_ball.x = width / 2;
+	moving_ball.y = height / 4;
+
+
+
+	//  컨트롤바 초기좌표
+	bar1.x = bar1_x; bar1.y = bar1_y;
+	bar2.x = bar1_x+100; bar2.y = bar1_y;
+	bar3.x = bar1_x + 100; bar3.y = bar1_y+20;
+	bar4.x = bar1_x; bar4.y = bar1_y+20;
+
+
+	//두번째 컨트롤 바
+	bar_2_1.x = bar2_x;			bar_2_1.y = bar2_y;
+	bar_2_2.x = bar2_x + 100;	bar_2_2.y = bar2_y;
+	bar_2_3.x = bar2_x+100;		bar_2_3.y = bar2_y-20;
+	bar_2_4.x = bar2_x;			bar_2_4.y = bar2_y-20;
+
+	bar_speed = 5;
+
+	ball_speed = 5;
+
+	velocity.x = -0.5* 3 ;
+	velocity.y = 1.0 * 3;
+
+	collision_count = 1;
+
+	counting = 0;
+
+	field_radius = 500;
+	
+	for(int i =0; i<brickRows;i++)
+	{
+		for(int j=0;j<brickCols;j++)
+		{
+			bricks[i][j] = false;
+		}
+	}
+
+	//필드 모서리를 각 각 a b c d e        f g h i j 라 할때
+	// 왼쪽 4개
+	
+	a.x = 400.027;	a.y = 883.028;
+	b.x = 217.007;	b.y = 700.033;
+	c.x = 150;		c.y = 450.046;
+	d.x = 216.96;	d.y = 200.047;
+	e.x = 339.947;	e.y = 17.0182;
+
+	//오른쪽 4개
+	f.x = 900.013;	f.y = 883.005;
+	g.x = 1083.02;	g.y = 699.993;
+	h.x = 1150;		h.y = 450;
+	i.x = 1082.97;	i.y = 199.927;
+	j.x = 899.933;	j.y = 16.9488;
+
+
+}
+
+
+Point CalculateNormal(const Point& p1,const Point& p2 )
+{
+	Point lineVector = { p2.x - p1.x , p2.y - p1.y };
+	Point normalVector = { -lineVector.y , lineVector.x };
+
+	return normalVector;
+}
+
+Point Normalize(const Point& v)
+{
+	float length = std::sqrt(v.x * v.x + v.y * v.y);
+	Point normalized = { v.x / length, v.y / length };
+	return normalized;
+}
+
+Point Reflect(const Point& direction, const Point& normal)
+{
+	Point normalizedDirection = Normalize(direction);
+	Point normalizedNormal = Normalize(normal);
+
+	float dotProduct = normalizedDirection.x * normalizedNormal.x + normalizedDirection.y * normalizedNormal.y;
+	Point reflection = { normalizedDirection.x - 2.0f * dotProduct * normalizedNormal.x, normalizedDirection.y - 2.0f * dotProduct * normalizedNormal.y };
+	return reflection;
+
+}
+
+void MyReshape(int w, int h) {
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(left, left + width, bottom, bottom + height); // mouse2()
+}
+
+void object_zone()
+{
+	glColor3f(0, 0, 0);
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(400, 650);
+	glVertex2f(900, 650);
+	glVertex2f(900, 300);
+	glVertex2f(400, 300);
+	glEnd();
+
+}
+
+void Modeling_control_bar()
+{
+
+	bar1.x = bar1_x; bar1.y = bar1_y;
+	bar2.x = bar1_x + 100; bar2.y = bar1_y;
+	bar3.x = bar1_x + 100; bar3.y = bar1_y + 20;
+	bar4.x = bar1_x; bar4.y = bar1_y + 20;
+
+	bar_2_1.x = bar2_x;			bar_2_1.y = bar2_y;
+	bar_2_2.x = bar2_x + 100;	bar_2_2.y = bar2_y;
+	bar_2_3.x = bar2_x + 100;		bar_2_3.y = bar2_y - 20;
+	bar_2_4.x = bar2_x;			bar_2_4.y = bar2_y - 20;
+
+	glBegin(GL_POLYGON);
+	glVertex2f(bar1.x, bar1.y);
+	glVertex2f(bar2.x, bar2.y);
+	glVertex2f(bar3.x, bar3.y);
+	glVertex2f(bar4.x, bar4.y);
+	glEnd();
+	
+	glBegin(GL_POLYGON);
+	glVertex2f(bar_2_1.x, bar_2_1.y);
+	glVertex2f(bar_2_2.x, bar_2_2.y);
+	glVertex2f(bar_2_3.x, bar_2_3.y);
+	glVertex2f(bar_2_4.x, bar_2_4.y);
+	glEnd();
+
+
+	glFinish();
+}
+
+void Modeling_field()
+{
+	float delta;
+	delta = 2 * PI / field;
+	glColor3f(0, 0, 0);
+	glLineWidth(3);
+	glBegin(GL_LINE_LOOP);
+	for (int i = 0; i < field; i++)
+		glVertex2f(width / 2 + field_radius * cos(delta * i), height / 2 + field_radius * sin(delta * i));
+	glEnd();
+}
+
+
+void Modeling_Circle(float radius, Point CC) {
+	float	delta;
+
+	delta = 2 * PI / polygon_num;
+	glBegin(GL_POLYGON);
+	for (int i = 0; i < polygon_num; i++)
+		glVertex2f(CC.x + radius * cos(delta * i), CC.y + radius * sin(delta * i));
+	glEnd();
+}
+
+void create_black()
+{
+
+	int tempx, tempy;
+	srand(time(NULL));
+	int x, y;
+
+	while (counting < MAX_black_num)
+	{
+		tempx = rand() % 7;
+		tempy = rand() % 10;
+		std::cout << tempx << " " << tempy << std::endl;
+		if (bricks[tempx][tempy] == false)
+		{
+
+			bricks[tempx][tempy] = true;
+			x = 400 + tempy * brick_widht;
+			y = -250 + height - (tempx + 1) * brick_height;
+
+			glColor3f(0.5, 0.5, 0.5);
+			glRecti(x, y, x + brick_widht, y + brick_height);
+
+
+			counting++;
+
+			std::cout << x << " " << y << " " << counting << std::endl;
+		}
+	}
+
+	
+	/*for (int i = 0; i<brickRows; ++i)
+	{
+		for(int j=0; j< brickCols;j++)
+		{
+			if (counting < MAX_black_num) {
+				if (bricks[i][j] == false)
+				{
+					bricks[i][j] = true;
+					int x = 400 + j * brick_widht;
+					int y = -250 + height - (i + 1) * brick_height;
+					glColor3f(0.5, 0.5, 0.5);
+					glRecti(x, y, x + brick_widht, y + brick_height);
+					counting++;
+				}
+			}
+		}
+	}*/
+
+
+}
+
+
+void Collision_bar()
+{
+	float point,point2;
+
+	point = moving_ball.x - moving_ball_radius;
+	point2 = moving_ball.y - moving_ball_radius;
+
+	if( bar1.x <= point && bar2.x >= point && bar1.y <= point2 && bar3.y >= point2) //공과 컨트롤바1 이 만날때
+	{
+		velocity.y = velocity.y * -1;
+	}
+
+}
+
+void Collision_Detection_Between_Balls(void) {
+	float	distance;
+
+	distance = sqrt(pow(fixed_ball.x - moving_ball.x, 2) + pow(fixed_ball.y - moving_ball.y, 2)); // 공과 다른 공이 만날때
+	if (distance <= radius1 + moving_ball_radius)
+	{
+		count++;
+		velocity.y = velocity.y * -1;
+	}
+
+}
+
+void collision_wall(const Point& a, const Point& b)
+{
+	//왼쪽 벽
+
+	Point wallNormal = { b.y - a.y, a.x - b.x };
+
+	//ballToWall = CalculateNormal(a, b);
+	Point ballToWall = { b.x - a.x, b.y - a.y };
+	Point ballToWallNormalized = Normalize(ballToWall);
+	Point ballToWallPerpendicular = { -ballToWallNormalized.y, ballToWallNormalized.x };
+
+
+	float dotProduct = (moving_ball.x - a.x) * ballToWallPerpendicular.x + (moving_ball.y - a.y) * ballToWallPerpendicular.y;
+	if (dotProduct < 0.0f) {
+		// 벽과 충돌한 경우
+		Point reflection = Reflect(velocity, wallNormal);
+		velocity.x = reflection.x;
+		velocity.y = reflection.y;
+	}
+
+}
+
+void collision_wall2(const Point& a, const Point& b)
+{
+	//오른쪽 벽
+
+	Point wallNormal = { b.y - a.y, a.x - b.x };
+
+	//ballToWall = CalculateNormal(f, g);
+	Point ballToWall = { b.x - a.x, b.y - a.y };
+	Point ballToWallNormalized = Normalize(ballToWall);
+	Point ballToWallPerpendicular = { -ballToWallNormalized.y, ballToWallNormalized.x };
+
+
+	float dotProduct = (moving_ball.x - a.x) * ballToWallPerpendicular.x + (moving_ball.y - a.y) * ballToWallPerpendicular.y;
+	if (dotProduct > 0.0f) {
+		// 벽과 충돌한 경우
+		Point reflection = Reflect(velocity, wallNormal);
+		velocity.x = reflection.x;
+		velocity.y = reflection.y;
+	}
+
+}
+
+
+void Collision_Detection_to_Walls(void) {
+	
+
+	collision_wall(a, b);
+	collision_wall(b, c);
+	collision_wall(c, d);
+	collision_wall(d, e);
+	collision_wall2(f, g);
+	collision_wall2(g, h);
+	collision_wall2(h, i);
+	collision_wall2(i, j);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	if (moving_ball.x - moving_ball_radius <= left)
+		velocity.x = velocity.x * -1;
+
+	if (moving_ball.x + moving_ball_radius >= right)
+		velocity.x = velocity.x * -1;
+	
+	if (moving_ball.y - moving_ball_radius <= bottom)
+		velocity.y = velocity.y * -1;
+	
+	if (moving_ball.y + moving_ball_radius >= top)
+		velocity.y = velocity.y * -1;
+
+}
+
+void RenderScene(void) {
+
+	glClearColor(1.0, 1.0, 0.0, 0.0); // Set display-window color to Yellow
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	// 윈도우 중심의 위치에 고정된 공 그리기
+	if (count % 2 == 0) {
+		glColor3f(1.0, 0.0, 0.0);
+		if (collision_count % 2)
+			Modeling_Circle(radius1, fixed_ball);
+	}
+
+	glColor3f(0, 0, 0);
+	Modeling_control_bar();
+
+
+
+	// 충돌 처리 부분
+	Collision_Detection_Between_Balls();		// 공과 공의 충돌 함수 
+	Collision_Detection_to_Walls();			// 공과 벽의 충돌 함수 
+
+	// 움직이는 공의 위치 변화 
+	moving_ball.x += velocity.x;
+	moving_ball.y += velocity.y;
+
+	glPushMatrix();
+	// 움직이는 공 그리기 
+	glColor3f(0.0, 0.0, 1.0);
+	Modeling_Circle(moving_ball_radius, moving_ball);
+	glTranslatef(0, moving_ball.y, 0);
+	glPopMatrix();
+	Modeling_field();
+	object_zone();
+	Collision_bar();
+	create_black();
+	
+
+
+	
+
+
+	glutSwapBuffers();
+	glFlush();
+}
+
+void SpecialKey(int key, int x, int y) {
+
+	switch (key) {
+	case GLUT_KEY_LEFT: bar1_x--;
+		break;
+	case GLUT_KEY_RIGHT:
+		bar1_x++;
+
+		break;
+	default:				break;
+
+	}
+	glutPostRedisplay();
+}
+
+void MyKey(unsigned char key, int x, int y) {
+
+	switch (key) {
+	case 'a': bar2_x--;		break;
+	case 'd': bar2_x++  ; break; 	
+	default:	break;
+	}
+	glutPostRedisplay(); //변경사항 적용
+}
+
+
+
+void main(int argc, char** argv) {
+	glutInit(&argc, argv);
+	glutInitWindowPosition(100, 100);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowSize(width, height);
+	glutCreateWindow("Bouncing Ball & Wall");
+	init();
+	glutReshapeFunc(MyReshape);
+	glutSpecialFunc(SpecialKey);
+	glutKeyboardFunc(MyKey);
+	glutDisplayFunc(RenderScene);
+	glutIdleFunc(RenderScene);
+	glutMainLoop();
+}
