@@ -1,0 +1,166 @@
+#include <windows.h>           
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <gl/glut.h>   
+#include <math.h>
+
+#define		PI	3.1415926
+#define		No_theta	36
+#define		No_phi		18 
+
+
+float		theta, phi;
+float		delta_theta, delta_phi;
+float		start_theta, start_phi;
+/* 원본 색
+float		ambientLight[] = { 1.0f, 0.0f, 0.0f, 1.0f };
+float		diffuseLight[] = { 1.0f, 1.0f, 0.5f, 1.0f };
+float		specularLight[] = { 0.0f, 0.0f, 1.0f, 1.0f };
+float		lightPosition[] = { 2.0f, 0.0f, 2.0f, 1.0f };
+
+
+*/
+float		ambientLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+float		diffuseLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+float		specularLight[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+float		lightPosition[] = { 2.0f, 0.0f, 2.0f, 1.0f };
+
+float		Radius;
+
+struct  vector3d {
+	float		x;
+	float		y;
+	float		z;
+};
+
+struct point3d {
+	float		x;
+	float		y;
+	float		z;
+	vector3d	normal;
+};
+
+point3d	ver[No_theta][No_phi + 1];
+
+int		v_count = 0;
+int		f_count = 0;
+
+
+void		Vertex_Generation(void) {
+	float	distance;
+
+	start_theta = 0.0;
+	delta_theta = 2 * PI / No_theta;
+
+	start_phi = -PI / 2.0;
+	delta_phi = PI / (No_phi - 1);
+
+	for (int j = 0; j < No_phi; j++) {
+		for (int i = 0; i < No_theta; i++) {
+			theta = start_theta + i * delta_theta;
+			phi = start_phi + j * delta_phi;
+			ver[i][j].x = Radius * cos(phi) * cos(theta);
+			ver[i][j].y = Radius * cos(phi) * sin(theta);
+			ver[i][j].z = Radius * sin(phi);
+			v_count++;
+		}
+	}
+}
+
+void Draw_Sphere(void) {
+	for (int j = 0; j < No_phi - 1; j++) {
+		for (int i = 0; i < No_theta; i++) {
+			glBegin(GL_POLYGON);
+
+			glNormal3f(ver[i][j].x, ver[i][j].y, ver[i][j].z);
+			glVertex3f(ver[i][j].x, ver[i][j].y, ver[i][j].z);
+
+			glNormal3f(ver[(i + 1) % No_theta][j].x, ver[(i + 1) % No_theta][j].y, ver[(i + 1) % No_theta][j].z);
+			glVertex3f(ver[(i + 1) % No_theta][j].x, ver[(i + 1) % No_theta][j].y, ver[(i + 1) % No_theta][j].z);
+
+			glNormal3f(ver[(i + 1) % No_theta][j + 1].x, ver[(i + 1) % No_theta][j + 1].y, ver[(i + 1) % No_theta][j + 1].z);
+			glVertex3f(ver[(i + 1) % No_theta][j + 1].x, ver[(i + 1) % No_theta][j + 1].y, ver[(i + 1) % No_theta][j + 1].z);
+
+			glNormal3f(ver[i][j + 1].x, ver[i][j + 1].y, ver[i][j + 1].z);
+			glVertex3f(ver[i][j + 1].x, ver[i][j + 1].y, ver[i][j + 1].z);
+
+			glEnd();
+		}
+	}
+}
+
+
+void init(void)
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	glShadeModel(GL_SMOOTH);
+	//	glShadeModel(GL_FLAT);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0); //스위치를 키는 작업 뒤에는 0(숫자)
+
+
+
+	//float		ambientLight[] = { 1.0f, 0.0f, 0.0f, 1.0f }; 은은하게 퍼지는 색이 빨간색
+	//float		diffuseLight[] = { 1.0f, 1.0f, 0.5f, 1.0f };
+	//float		specularLight[] = { 0.0f, 0.0f, 1.0f, 1.0f }; R 반사x G반사 X B반사 0 (범위:0~1)
+	//float		lightPosition[] = { 2.0f, 0.0f, 2.0f, 1.0f }; // x y z 마지막은 광원의 종류 2개중 1개 1->점광원(광원의 위치)  0-> 선광원(밫이 가는 방향)
+
+	//오픈GL에선 광원을 최대 8개까지 사용가능
+	//전구를 설치하는 작업 4개(광원설정)
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambientLight); //주변 광의 값을 ambientLinght로 설정 
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuseLight); // 광원의 특성
+	glLightfv(GL_LIGHT0, GL_SPECULAR, specularLight); // 광원의 재질
+	glLightfv(GL_LIGHT0, GL_POSITION, lightPosition); //광원의 위치
+
+	glMaterialfv(GL_FRONT, GL_SPECULAR, specularLight); //GL_FRONT => 법선벡터가 있는 앞쪽면만 재질(빛의 흡수율)을 적용
+	//glMateriali(GL_FRONT, GL_SHININESS, 5); //빛이 비추는 범위
+	glMateriali(GL_FRONT, GL_SHININESS, 100); 
+
+	Radius = 1.0;
+	Vertex_Generation();
+
+}
+
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0, 1.0, 1.0, 1000);
+	gluLookAt(2.0 * Radius, 2.0 * Radius, 2.0 * Radius, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+}
+
+void display(void)
+{
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	Draw_Sphere();
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+
+int main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("Rendered Sphere");
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutIdleFunc(display);
+	init();
+	glutMainLoop();
+	return 0;
+}
