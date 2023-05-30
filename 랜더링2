@@ -1,0 +1,201 @@
+#include <gl/glut.h>
+#include <math.h>   
+
+#define	PI   3.1415926
+#define	N    36   	// Number of parameter “theta” 
+#define	M    18   	// Number of parameter “phi” 	
+
+float	theta, phi;
+float	delta_theta, delta_phi;
+float	start_theta, start_phi;
+float	Radius = 1.0;
+float 	ver[N][M + 1][3];
+
+float light_position[] = { 5.0, 5.0, 5.0, 1.0 };
+
+//float light_ambient[] = { 1.0, 0.0, 0.0, 0.0 };
+float light_ambient[] = { 1.0, 1.0, 0.0, 0.0 }; // 구면 그림자부분 색
+
+
+float light_diffuse[] = { 1.0, 0.0, 0.0, 0.0 }; //구면 전체 색
+//float light_diffuse[] = { 0.0, 1.0, 0.0, 0.0 };
+float light_specular[] = { 0.0, 0.0, 1.0, 0.0 };
+
+struct  vector3d {
+	float		x;
+	float		y;
+	float		z;
+};
+
+//외적 계산 함수
+vector3d crossProduct(const vector3d& a, const vector3d& b)
+{
+
+	vector3d result;
+	result.x = a.y * b.z - a.z * b.y;
+	result.y = a.z * b.x - a.x * b.z;
+	result.z = a.x * b.y - a.y * b.x;
+	return result;
+}
+
+//벡터의 차를 계산하는 함수
+vector3d subtract(const vector3d& a, const vector3d& b)
+{
+	vector3d result;
+	result.x = a.x - b.x;
+	result.y = a.y - b.y;
+	result.z = a.z - b.z;
+	return result;
+}
+
+//벡터의 크기계산 함수
+float magnitude(const vector3d& vec)
+{
+	return sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
+//벡터를 정규화하는 함수
+vector3d normalize(const vector3d vec)
+{
+	float mag = magnitude(vec);
+	vector3d result;
+	result.x = vec.x / mag;
+	result.y = vec.y / mag;
+	result.z = vec.z / mag;
+	return result;
+}
+
+//3 개의 점으로 평면의 법선벡를 계산하는 함수
+vector3d calculateNormal(const vector3d& p1, const vector3d& p2, const vector3d& p3)
+{
+
+	//벡터 a는 p1에서 p2로 향하는 벡터
+	vector3d a = subtract(p2, p1);
+
+	//벡터 b는 p1에서 p3로 향하는 벡터
+	vector3d b = subtract(p3, p1);
+
+
+
+	//벡터 p1 과 p2 외적을 계산하여 법선 벡터를 얻음
+	vector3d normal = crossProduct(a, b);
+
+	//법선 벡터를 정규화하여 반환
+	return normalize(normal);
+
+}
+
+
+
+void 	VertexGeneration(void) {
+	start_theta = 0.0;
+	delta_theta = 2.0 * PI / N;
+
+	start_phi = -1.0 * PI / 2.0;
+	delta_phi = 1.0 * PI / M;
+
+	for (int j = 0; j <= M; j++) {			// phi (위도)
+		for (int i = 0; i < N; i++) { 		// theta (경도)
+			theta = start_theta + i * delta_theta;
+			phi = start_phi + j * delta_phi;
+			ver[i][j][0] = Radius * cos(phi) * cos(theta);
+			ver[i][j][1] = Radius * cos(phi) * sin(theta);
+			ver[i][j][2] = Radius * sin(phi);
+		}
+	}
+}
+
+
+void	Modify_Vertex(void) {
+
+	float	length;
+
+	for (int j = 0; j <= M; j++) {
+		for (int i = 0; i < N; i++) {
+			if (fabs(ver[i][j][2]) < 0.5) {
+				length = (4.0 * sqrt(3.0) - 1.0) / 2.0 * fabs(ver[i][j][2])
+					* fabs(ver[i][j][2]) + 1 / 8.0;
+				ver[i][j][0] *= length;
+				ver[i][j][1] *= length;
+			}
+		}
+	}
+}
+
+
+
+void DrawSphere(void) {
+	for (int j = 0; j < M; j++) {
+		for (int i = 0; i < N; i++) {
+			glBegin(GL_POLYGON);
+			//glBegin(GL_LINE_LOOP);
+			glNormal3fv(ver[i][j]);
+			glVertex3fv(ver[i][j]);
+
+			glNormal3fv(ver[(i + 1) % N][j]);
+			glVertex3fv(ver[(i + 1) % N][j]);
+
+			glNormal3fv(ver[(i + 1) % N][j + 1]);
+			glVertex3fv(ver[(i + 1) % N][j + 1]);
+
+			glNormal3fv(ver[i][j + 1]);
+			glVertex3fv(ver[i][j + 1]);
+			glEnd();
+		}
+	}
+}
+
+void init(void) {
+	glShadeModel(GL_SMOOTH);      //GL_FLAT 
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+
+	glEnable(GL_DEPTH_TEST);
+	VertexGeneration();
+	//Modify_Vertex();
+}
+
+void 	reshape(int w, int h) {
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0, 1.0, 1.0, 1000);
+}
+void 	cameraSetting(void) {
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(2.0 * Radius, 2.0 * Radius, 2.0 * Radius,
+		0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+}
+
+void display(void)
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	cameraSetting();
+	DrawSphere();
+
+	glFlush();
+}
+
+int main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("3D Rendered Sphere");
+	init();
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutMainLoop();
+	return 0;
+}
+
