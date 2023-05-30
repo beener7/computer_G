@@ -47,6 +47,63 @@ int		v_count = 0;
 int		f_count = 0;
 
 
+//외적 계산 함수
+vector3d crossProduct(const vector3d& a , const vector3d& b)
+{
+
+	vector3d result;
+	result.x = a.y * b.z - a.z * b.y;
+	result.y = a.z * b.x - a.x * b.z;
+	result.z = a.x * b.y - a.y * b.x;
+	return result;
+}
+
+//벡터의 차를 계산하는 함수
+vector3d subtract(const vector3d& a, const vector3d& b)
+{
+	vector3d result;
+	result.x = a.x - b.x;
+	result.y = a.y - b.y;
+	result.z = a.z - b.z;
+	return result;
+}
+
+//벡터의 크기계산 함수
+float magnitude(const vector3d& vec)
+{
+	return sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+}
+
+//벡터를 정규화하는 함수
+vector3d normalize(const vector3d vec)
+{
+	float mag = magnitude(vec);
+	vector3d result;
+	result.x = vec.x / mag;
+	result.y = vec.y / mag;
+	result.z = vec.z / mag;
+	return result;
+}
+
+//4 개의 점으로 평면의 법선벡를 계산하는 함수
+vector3d calculateNormal(const vector3d& p1 , const vector3d& p2, const vector3d& p3 ,const vector3d& p4)
+{
+
+	//벡터 a는 p1에서 p2로 향하는 벡터
+	vector3d a = subtract(p2, p1);
+	//벡터 b는 p1에서 p3로 향하는 벡터
+	vector3d b = subtract(p3, p1);
+	//벡터 c 는 p1에서 p4로 향하는 벡터
+	vector3d c = subtract(p4, p1);
+	//벡터 ab와 ac의 외적을 계산하여 법선 벡터를 얻음
+	vector3d normal = crossProduct(a, b);
+	//법선 벡터를 정규화하여 반환
+	return normalize(normal);
+
+}
+
+
+
 void		Vertex_Generation(void) {
 	float	distance;
 
@@ -72,7 +129,7 @@ void Draw_Sphere(void) {
 	for (int j = 0; j < No_phi - 1; j++) {
 		for (int i = 0; i < No_theta; i++) {
 			glBegin(GL_POLYGON);
-				
+
 			//반지름이 1일때만 가능한 코드(법선벡터의 계산문제)
 			glNormal3f(ver[i][j].x, ver[i][j].y, ver[i][j].z);
 			glVertex3f(ver[i][j].x, ver[i][j].y, ver[i][j].z);
@@ -86,6 +143,8 @@ void Draw_Sphere(void) {
 			glNormal3f(ver[i][j + 1].x, ver[i][j + 1].y, ver[i][j + 1].z);
 			glVertex3f(ver[i][j + 1].x, ver[i][j + 1].y, ver[i][j + 1].z);
 
+			//vector3d normal = calculateNormal(p1, p2, p3, p4);
+			
 			glEnd();
 		}
 	}
@@ -119,7 +178,7 @@ void init(void)
 
 	glMaterialfv(GL_FRONT, GL_SPECULAR, specularLight); //GL_FRONT => 법선벡터가 있는 앞쪽면만 재질(빛의 흡수율)을 적용
 	//glMateriali(GL_FRONT, GL_SHININESS, 5); //빛이 비추는 범위
-	glMateriali(GL_FRONT, GL_SHININESS, 100); 
+	glMateriali(GL_FRONT, GL_SHININESS, 100);
 
 	Radius = 1.0;
 	Vertex_Generation();
