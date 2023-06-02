@@ -1,0 +1,403 @@
+// Light Position relative to Camera Position 
+
+#include <gl/glut.h>
+#include <math.h>
+
+
+#define PI   3.1415926
+#define N    36    // Number of parameter “theta” 
+#define M    18    // Number of parameter “phi”  
+
+
+float theta, phi;
+float delta_theta, delta_phi;
+float start_theta, start_phi;
+
+float radius;
+
+
+int	 camera_setting_flag = 0;
+
+struct  vector3d {
+	float		x;
+	float		y;
+	float		z;
+};
+
+float	ver[N][M + 1][3];
+float	normal[N][M + 1][3];
+
+float	F_ver[N][M + 1][3];
+float	F_normal[N][M + 1][3];
+
+float	M_ver[N][M + 1][3];
+float	M_normal[N][M + 1][3];
+
+typedef struct postion {
+	float	x;
+	float	y;
+	float	z;
+}position;
+
+
+position fixed_sphere, moving_sphere;
+
+
+float light_position[] = { 0.0, -4.0, -7.0, 1.0 };
+float light_ambient[] = { 1.0, 0.0, 0.0, 0.0 };
+float light_diffuse[] = { 1.0, 1.0, 0.0, 0.0 };
+float light_specular[] = { 0.0, 0.0, 1.0, 0.0 };
+
+float ambient0[] = { 1.0, 1.0, 1.0, 0.0 };
+float diffuse0[] = { 1.0, 1.0, 0.0, 0.0 };
+float specular0[] = { 1.0, 1.0, 1.0, 0.0 };
+
+float ambient1[] = { 0.0, 1.0, 1.0, 0.0 };
+float diffuse1[] = { 0.0, 1.0, 1.0, 0.0 };
+float specular1[] = { 0.0, 1.0, 1.0, 0.0 };
+
+
+vector3d	Normalization(vector3d U) {
+	float		distance;
+	vector3d	Unit_vector;
+
+	distance = sqrt(U.x * U.x + U.y * U.y + U.z * U.z);
+
+	Unit_vector.x = 1 / distance * U.x;
+	Unit_vector.y = 1 / distance * U.y;
+	Unit_vector.z = 1 / distance * U.z;
+
+	return Unit_vector;
+}
+
+vector3d Cross_Product(vector3d U, vector3d V) {
+	vector3d cross_vector;
+
+	cross_vector.x = U.y * V.z - U.z * V.y;
+	cross_vector.y = -1.0 * (U.x * V.z - U.z * V.x);
+	cross_vector.z = U.x * V.y - U.y * V.x;
+
+	return cross_vector;
+}
+
+
+vector3d Face_Normal_Vector(int a, int b, int c, int d, int e, int f) {
+	vector3d U, V;
+
+	U.x = ver[c][d][0] - ver[a][b][0];
+	U.y = ver[c][d][1] - ver[a][b][1];
+	U.z = ver[c][d][2] - ver[a][b][2];
+
+	V.x = ver[e][f][0] - ver[a][b][0];
+	V.y = ver[e][f][1] - ver[a][b][1];
+	V.z = ver[e][f][2] - ver[a][b][2];
+
+	return (Normalization(Cross_Product(U, V)));
+}
+
+void Vertex_Normal_Computation(void) {
+	vector3d S, normal1, normal2, normal3, normal4, temp_vector;
+
+	S.x = 0.0;
+	S.y = 0.0;
+	S.z = 0.0;
+	for (int i = 0; i < N; i++) {
+		normal1 = Face_Normal_Vector(i, 0, (i + 1) % N, 1, i, 1);
+		S.x += normal1.x;
+		S.y += normal1.y;
+		S.z += normal1.z;
+	}
+	S = Normalization(S);
+
+	for (int i = 0; i < N; i++) {
+		normal[i][0][0] = S.x;
+		normal[i][0][1] = S.y;
+		normal[i][0][2] = S.z;
+	}
+
+	for (int j = 1; j < M; j++) {
+		for (int i = 0; i < N; i++) {
+			normal1 = Face_Normal_Vector(i, j, (i + 1) % N, j, i, j + 1);
+			normal2 = Face_Normal_Vector(i, j, i, j + 1, (i - 1 + N) % N, j);
+			normal3 = Face_Normal_Vector(i, j, (i - 1 + N) % N, j, i, j - 1);
+			normal4 = Face_Normal_Vector(i, j, i, j - 1, (i + 1) % N, j);
+			temp_vector.x = (normal1.x + normal2.x + normal3.x + normal4.x) / 4.0;
+			temp_vector.y = (normal1.y + normal2.y + normal3.y + normal4.y) / 4.0;
+			temp_vector.z = (normal1.z + normal2.z + normal3.z + normal4.z) / 4.0;
+
+			temp_vector = Normalization(temp_vector);
+
+			normal[i][j][0] = temp_vector.x;
+			normal[i][j][1] = temp_vector.y;
+			normal[i][j][2] = temp_vector.z;
+		}
+	}
+
+	S.x = 0.0;
+	S.y = 0.0;
+	S.z = 0.0;
+	for (int i = 0; i < N; i++) {
+		normal1 = Face_Normal_Vector(i, M, i, M - 1, (i + 1) % N, M - 1);
+		S.x += normal1.x;
+		S.y += normal1.y;
+		S.z += normal1.z;
+	}
+	S = Normalization(S);
+	for (int i = 0; i < N; i++) {
+		normal[i][M][0] = S.x;
+		normal[i][M][1] = S.y;
+		normal[i][M][2] = S.z;
+	}
+}
+
+
+void  VertexGeneration(position center) {
+	start_theta = 0.0;
+	delta_theta = 2.0 * PI / N;
+	start_phi = -1.0 * PI / 2.0;
+	delta_phi = 1.0 * PI / M;
+
+	for (int j = 0; j <= M; j++) { // phi (위도)
+		for (int i = 0; i < N; i++) {  // theta (경도)
+			theta = start_theta + i * delta_theta;
+			phi = start_phi + j * delta_phi;
+			ver[i][j][0] = center.x + radius * cos(phi) * cos(theta);
+			ver[i][j][1] = center.y + radius * cos(phi) * sin(theta);
+			ver[i][j][2] = center.z + radius * sin(phi);
+		}
+	}
+
+}
+
+void DrawSphere(int index) { //2번 콜하면 구가 2개 단 위치조정
+
+	if (index == 1) {
+		for (int j = 0; j < M; j++) {
+			for (int i = 0; i < N; i++) {
+				glBegin(GL_POLYGON);
+				glNormal3fv(F_normal[i][j]);
+				glVertex3fv(F_ver[i][j]);
+
+				glNormal3fv(F_normal[(i + 1) % N][j]);
+				glVertex3fv(F_ver[(i + 1) % N][j]);
+
+				glNormal3fv(F_normal[(i + 1) % N][j + 1]);
+				glVertex3fv(F_ver[(i + 1) % N][j + 1]);
+
+				glNormal3fv(F_normal[i][j + 1]);
+				glVertex3fv(F_ver[i][j + 1]);
+				glEnd();
+			}
+		}
+	}
+	else {
+		for (int j = 0; j < M; j++) {
+			for (int i = 0; i < N; i++) {
+				glBegin(GL_POLYGON);
+				glNormal3fv(M_normal[i][j]);
+				glVertex3fv(M_ver[i][j]);
+
+				glNormal3fv(M_normal[(i + 1) % N][j]);
+				glVertex3fv(M_ver[(i + 1) % N][j]);
+
+				glNormal3fv(M_normal[(i + 1) % N][j + 1]);
+				glVertex3fv(M_ver[(i + 1) % N][j + 1]);
+
+				glNormal3fv(M_normal[i][j + 1]);
+				glVertex3fv(M_ver[i][j + 1]);
+				glEnd();
+			}
+		}
+
+	}
+}
+
+void assign_normal(int index) {
+	if (index == 1) {
+		for (int j = 0; j <= M; j++) {
+			for (int i = 0; i < N; i++) {
+				F_normal[i][j][0] = normal[i][j][0];
+				F_normal[i][j][1] = normal[i][j][1];
+				F_normal[i][j][2] = normal[i][j][2];
+			}
+		}
+	}
+	else {
+		for (int j = 0; j <= M; j++) {
+			for (int i = 0; i < N; i++) {
+				M_normal[i][j][0] = normal[i][j][0];
+				M_normal[i][j][1] = normal[i][j][1];
+				M_normal[i][j][2] = normal[i][j][2];
+			}
+		}
+	}
+
+
+
+
+}
+
+void assign_geometry(int index) {
+	if (index == 1) {
+		for (int j = 0; j <= M; j++) { // phi (위도)
+			for (int i = 0; i < N; i++) {  // theta (경도)
+				theta = start_theta + i * delta_theta;
+				phi = start_phi + j * delta_phi;
+				F_ver[i][j][0] = ver[i][j][0];
+				F_ver[i][j][1] = ver[i][j][1];
+				F_ver[i][j][2] = ver[i][j][2];
+			}
+		}
+		assign_normal(1);
+	}
+	else {
+		for (int j = 0; j <= M; j++) { // phi (위도)
+			for (int i = 0; i < N; i++) {  // theta (경도)
+				theta = start_theta + i * delta_theta;
+				phi = start_phi + j * delta_phi;
+				M_ver[i][j][0] = ver[i][j][0];
+				M_ver[i][j][1] = ver[i][j][1];
+				M_ver[i][j][2] = ver[i][j][2];
+			}
+		}
+		assign_normal(2);
+	}
+
+}
+
+
+
+
+
+void  init(void) {
+	radius = 1.0;
+	fixed_sphere.x = -1.5;
+	fixed_sphere.y = 0.0;
+	fixed_sphere.z = 0.0;
+
+	VertexGeneration(fixed_sphere);
+	Vertex_Normal_Computation();
+	assign_geometry(1);
+
+	moving_sphere.x = 1.5;
+	moving_sphere.y = 0.0;
+	moving_sphere.z = 0.0;
+	VertexGeneration(moving_sphere);
+	Vertex_Normal_Computation();
+	assign_geometry(2);
+
+	glEnable(GL_DEPTH_TEST);
+	glShadeModel(GL_SMOOTH);
+	//glShadeModel(GL_FLAT);
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
+
+	glLightfv(GL_LIGHT0, GL_AMBIENT, light_ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, light_diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, light_position);
+
+}
+
+
+void  reshape(int w, int h) {
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(45.0, 1.0, 1.0, 1000);
+}
+
+void Draw_Axis(void) {
+	glLineWidth(3.0);
+	glBegin(GL_LINES);
+	glColor3f(1.0, 0.0, 0.0); // red color
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(100.0, 0.0, 0.0);
+
+	glColor3f(0.0, 1.0, 0.0); // green color
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 100.0, 0.0);
+
+	glColor3f(0.0, 0.0, 1.0); // blue color
+	glVertex3f(0.0, 0.0, 0.0);
+	glVertex3f(0.0, 0.0, 100.0);
+	glEnd();
+}
+
+void display(void)
+{
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	if (camera_setting_flag % 2) {
+		glLightfv(GL_LIGHT0, GL_POSITION, light_position);  // light position in camera coordinates system 시험등장 확률!
+		gluLookAt(0.0, -8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+	}
+	else {
+		gluLookAt(0.0, -8.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+		glLightfv(GL_LIGHT0, GL_POSITION, light_position); // light position in world coordinates
+	}
+
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse0); // Yellow Sphere
+	DrawSphere(1);
+
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse1); // Green Sphere
+	DrawSphere(2);
+
+	glDisable(GL_LIGHTING);
+	Draw_Axis();
+	glEnable(GL_LIGHTING);
+
+	glFlush();
+}
+
+void my_keyboeard(unsigned char key, int x, int y) {
+	switch (key) {
+	case 'c':	camera_setting_flag++; 
+		break;
+	case 'a':    light_position[2] += 0.1; //광원 위치의 z값이 변경 
+		break;
+	case 'd':    light_position[2] -= 0.1;
+		break;
+
+	default: break;
+	}
+	glutPostRedisplay();
+}
+
+void my_special(int key, int x, int y) {
+	switch (key) {
+	case GLUT_KEY_LEFT:		moving_sphere.x -= 0.1;
+		break;
+	case GLUT_KEY_RIGHT:	moving_sphere.x += 0.1;
+		break;
+	case GLUT_KEY_DOWN:		moving_sphere.y -= 0.1;
+		break;
+	case GLUT_KEY_UP:		moving_sphere.y += 0.1;
+		break;
+	default: break;
+	}
+	VertexGeneration(moving_sphere);
+	Vertex_Normal_Computation();
+	assign_geometry(2);
+	glutPostRedisplay();
+}
+
+
+
+int main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("3D_Sphere_with_Camera_Position_Change");
+	init();
+	glutDisplayFunc(display);
+	glutKeyboardFunc(my_keyboeard);
+	glutSpecialFunc(my_special);
+	glutReshapeFunc(reshape);
+	glutMainLoop();
+}
