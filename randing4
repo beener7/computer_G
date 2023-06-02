@@ -1,0 +1,523 @@
+#include <windows.h>       
+#include <string.h>
+#include <math.h>
+#include <gl/gl.h>
+#include <gl/glut.h>
+
+#define	PI	3.1415926
+#define	No_T	50
+#define No_P	50 
+
+int		count = 0;
+float	box_angle = 0.0;
+float	theta, phi;
+float	delta_theta, delta_phi;
+float	start_theta, start_phi;
+
+struct  vector3d {
+	float		x;
+	float		y;
+	float		z;
+};
+
+struct point3d {
+	float		x;
+	float		y;
+	float		z;
+	vector3d	normal;
+};
+point3d* ver;
+point3d		PP[No_T][No_P];
+
+vector3d	A, B, C, D;
+
+
+struct face3 {
+	int			v1;
+	int			v2;
+	int			v3;
+	vector3d	normal;
+};
+face3* face;
+
+float	camera_radius;
+float	Radius = 1.0;
+float	rotationX, rotationY;
+int		No_V, No_F;
+
+float	moveX, moveY;
+int		lastX, lastY;
+
+
+//********************* Material Data ****************//
+typedef struct materialStruct {
+	GLfloat	ambient[4]; //주변광
+	GLfloat	diffuse[4]; //난반사
+	GLfloat	specular[4]; //정반사
+	GLfloat	shininess;
+}materialStruct;
+
+materialStruct brassMaterials = {
+	{0.33, 0.22, 0.03, 0.5},
+	{0.78, 0.57, 0.11, 0.5},
+	{0.99, 0.91, 0.81, 0.5},
+	1.0
+};
+
+
+/*materialStruct redPlasticMaterials = {
+	{0.3, 0.0, 0.0, 0.0},	//GL_AMBIENT
+	{0.6, 0.0, 0.0, 0.0},	//GL_DIFFUSE
+	{0.8, 0.6, 0.6, 0.0},	//GL_SPECULAR
+	5.0						//GL_SHININESS
+};*/
+
+
+materialStruct redPlasticMaterials = {
+	{0.0, 0.5, 0.0, 0.0},	//GL_AMBIENT
+	{0.0, 0.0, 0.0, 0.0},	//GL_DIFFUSE
+	{0.0, 0.0, 0.5, 0.0},	//GL_SPECULAR
+	5.0						//GL_SHININESS
+};
+
+
+materialStruct greenPlasticMaterials = {
+	{0.3, 0.0, 0.0, 0.0},	//GL_AMBIENT
+	{0.6, 0.0, 0.0, 0.0},	//GL_DIFFUSE
+	{0.8, 0.6, 0.6, 0.0},	//GL_SPECULAR
+	5.0						//GL_SHININESS
+};
+
+
+
+/*
+materialStruct greenPlasticMaterials = {
+	{0.0, 0.3, 0.0, 0.0},
+	{0.0, 0.6, 0.0, 0.0},
+	{0.6, 0.8, 0.6, 0.0},
+	5.0
+}; */
+
+materialStruct bluePlasticMaterials = {
+	{0.0, 0.0, 0.3, 0.0},
+	{0.0, 0.0, 0.6, 0.0},
+	{0.6, 0.6, 0.8, 0.0},
+	5.0
+};
+
+materialStruct yellowPlasticMaterials = {
+	{0.3, 0.3, 0.0, 0.0},
+	{0.6, 0.6, 0.0, 0.0},
+	{0.8, 0.8, 0.8, 0.0},
+	5.0
+};
+
+
+materialStruct whiteShineyMaterials = {
+	{1.0, 1.0, 1.0, 1.0},
+	{1.0, 1.0, 1.0, 1.0},
+	{1.0, 1.0, 1.0, 1.0},
+	10.0
+};
+
+
+
+//********************* Light Data ****************//
+typedef struct lightingStruct {
+	GLfloat	ambient[4]; //주변광
+	GLfloat	diffuse[4]; //난반사
+	GLfloat	specular[4]; //정반사
+	GLfloat	position[4]; //위치
+	GLfloat cutoff; //
+	GLfloat	exponent; //
+}lightingStruct;
+
+lightingStruct whiteLighting = {
+	{0.0, 0.0, 0.0, 1.0},
+	{1.0, 1.0, 1.0, 1.0},
+	{1.0, 1.0, 1.0, 1.0},
+	{0.0, 0.0, 10.0, 1.0},
+	40.0,
+	80.0
+};
+
+lightingStruct coloredLighting = {
+	{1.0, 0.0, 0.0, 1.0},
+	{1.0, 1.0, 0.0, 1.0},
+	{1.0, 0.0, 0.0, 1.0},
+	{0.0, 0.0, 5.0, 1.0},
+	0.0,
+	1.0
+};
+
+materialStruct* currentMaterials;
+lightingStruct* currentLighting;
+
+float	angle[3];
+int		axis;
+
+
+void	Sphere_Vertex(void) {
+
+	int		i, j;
+	int		count = 0;
+
+	No_V = No_T * (No_P - 2) + 2;
+	ver = new point3d[No_V];
+
+	start_theta = 0.0;
+	delta_theta = 2 * PI / No_T;
+
+	start_phi = -PI / 2.0;
+	delta_phi = PI / (No_P - 1);
+
+	ver[count].x = Radius * cos(-PI / 2.0) * cos(0.0);
+	ver[count].y = Radius * cos(-PI / 2.0) * sin(0.0);
+	ver[count].z = Radius * sin(-PI / 2.0);
+	count++;
+
+	for (j = 1; j < No_P - 1; j++) {
+		for (i = 0; i < No_T; i++) {
+			theta = start_theta + i * delta_theta;
+			phi = start_phi + j * delta_phi;
+
+			ver[count].x = Radius * cos(phi) * cos(theta);
+			ver[count].y = Radius * cos(phi) * sin(theta);
+			ver[count].z = Radius * sin(phi);
+			count++;
+		}
+	}
+
+	ver[count].x = Radius * cos(PI / 2.0) * cos(0.0);
+	ver[count].y = Radius * cos(PI / 2.0) * sin(0.0);
+	ver[count].z = Radius * sin(PI / 2.0);
+	count++;
+
+}
+
+
+void	Modify_Vertex(void) {
+
+	int		i;
+	float	length;
+
+	for (i = 0; i < No_V; i++) {
+		if (fabs(ver[i].z) < 0.5) {
+			length = (4.0 * sqrt(3.0) - 1.0) / 2.0 * fabs(ver[i].z) * fabs(ver[i].z) + 1 / 8.0;
+			ver[i].x *= length;
+			ver[i].y *= length;
+		}
+	}
+
+}
+
+
+void Sphere_Face(void) {
+	int		count = 0;
+	int		i;
+	No_F = 2 * No_T * (No_P - 2);
+	face = new face3[No_F];
+
+	for (i = 1; i < No_T; i++) {
+		face[count].v1 = i;
+		face[count].v2 = 0;
+		face[count].v3 = i + 1;
+		count++;
+	}
+	face[count].v1 = No_T;
+	face[count].v2 = 0;
+	face[count].v3 = 1;
+	count++;
+
+	for (int j = 1; j <= No_P - 3; j++) {
+		for (int i = 1; i < No_T; i++) {
+			face[count].v1 = (j - 1) * No_T + i;
+			face[count].v2 = (j - 1) * No_T + i + 1;
+			face[count].v3 = j * No_T + i;
+			count++;
+
+			face[count].v1 = (j - 1) * No_T + i + 1;
+			face[count].v2 = j * No_T + i + 1;
+			face[count].v3 = j * No_T + i;
+			count++;
+		}
+		face[count].v1 = j * No_T;
+		face[count].v2 = (j - 1) * No_T + 1;
+		face[count].v3 = (j + 1) * No_T;
+		count++;
+
+		face[count].v1 = (j - 1) * No_T + 1;
+		face[count].v2 = j * No_T + 1;
+		face[count].v3 = (j + 1) * No_T;
+		count++;
+	}
+	for (i = 1; i < No_T; i++) {
+		face[count].v1 = (No_P - 3) * No_T + i;
+		face[count].v2 = (No_P - 3) * No_T + i + 1;
+		face[count].v3 = (No_P - 2) * No_T + 1;
+		count++;
+	}
+	face[count].v1 = (No_P - 2) * No_T;
+	face[count].v2 = (No_P - 3) * No_T + 1;
+	face[count].v3 = (No_P - 2) * No_T + 1;
+	count++;
+}
+
+vector3d	Normalization(vector3d p) {
+	float	mag;
+
+	mag = sqrt((double)(p.x * p.x + p.y * p.y + p.z * p.z));
+	p.x /= mag;
+	p.y /= mag;
+	p.z /= mag;
+
+	return	p;
+}
+
+
+vector3d	Cross_Product(vector3d U, vector3d V) {
+	vector3d cross;
+
+	cross.x = U.y * V.z - U.z * V.y;
+	cross.y = -1.0 * (double)(U.x * V.z - U.z * V.x);
+	cross.z = U.x * V.y - U.y * V.x;
+
+	return	Normalization(cross);
+}
+
+
+
+void face_normal_computation(void) {
+
+	vector3d	U, V;
+	int			first, second, third;
+
+	for (int j = 0; j < No_F; j++) {
+		first = face[j].v1;
+		second = face[j].v2;
+		third = face[j].v3;
+
+		U.x = ver[third].x - ver[second].x;
+		U.y = ver[third].y - ver[second].y;
+		U.z = ver[third].z - ver[second].z;
+
+		V.x = ver[first].x - ver[second].x;
+		V.y = ver[first].y - ver[second].y;
+		V.z = ver[first].z - ver[second].z;
+
+		face[j].normal = Cross_Product(U, V);
+	}
+}
+
+float	Vector_Magnitude(vector3d U) {
+	return(sqrt((double)(U.x * U.x + U.y * U.y + U.z * U.z)));
+}
+
+void vertex_normal_computation(void) {
+	vector3d	temp_normal;
+	int* index;
+	int			count;
+
+	for (int i = 0; i < No_V; i++) {
+		index = new int[100];
+		count = 0;
+		for (int j = 0; j < No_F; j++) {
+			if (i == face[j].v1 || i == face[j].v2 || i == face[j].v3) {
+				index[count] = j;
+				count++;
+			}
+		}
+		temp_normal.x = 0.0;
+		temp_normal.y = 0.0;
+		temp_normal.z = 0.0;
+		for (int k = 0; k < count; k++) {
+			temp_normal.x += face[index[k]].normal.x;
+			temp_normal.y += face[index[k]].normal.y;
+			temp_normal.z += face[index[k]].normal.z;
+		}
+		temp_normal.x /= count;
+		temp_normal.y /= count;
+		temp_normal.z /= count;
+
+		ver[i].normal = Normalization(temp_normal);
+
+		delete(index);
+	}
+}
+
+
+void draw_object(void) {
+	for (int i = 0; i < No_F; i++) {
+		glBegin(GL_POLYGON);
+		glNormal3f(ver[face[i].v1].normal.x, ver[face[i].v1].normal.y, ver[face[i].v1].normal.z);
+		glVertex3f(ver[face[i].v1].x, ver[face[i].v1].y, ver[face[i].v1].z);
+		glNormal3f(ver[face[i].v2].normal.x, ver[face[i].v2].normal.y, ver[face[i].v2].normal.z);
+		glVertex3f(ver[face[i].v2].x, ver[face[i].v2].y, ver[face[i].v2].z);
+		glNormal3f(ver[face[i].v3].normal.x, ver[face[i].v3].normal.y, ver[face[i].v3].normal.z);
+		glVertex3f(ver[face[i].v3].x, ver[face[i].v3].y, ver[face[i].v3].z);
+		glEnd();
+	}
+}
+
+
+void init(void)
+{
+	moveX = 0.0;
+	moveY = 0.0;
+	lastX = 0;
+	lastY = 0;
+	camera_radius = 4.0;
+
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	glShadeModel(GL_SMOOTH);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_LIGHTING);
+
+
+	glEnable(GL_LIGHT0);
+	currentLighting = &whiteLighting;
+	glLightfv(GL_LIGHT0, GL_AMBIENT, currentLighting->ambient);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, currentLighting->diffuse);
+	glLightfv(GL_LIGHT0, GL_SPECULAR, currentLighting->specular);
+	glLightfv(GL_LIGHT0, GL_POSITION, currentLighting->position);
+	glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, currentLighting->cutoff);
+	glLightf(GL_LIGHT0, GL_SPOT_EXPONENT, currentLighting->exponent);
+
+
+	glEnable(GL_LIGHT1);
+	currentLighting = &coloredLighting;
+	glLightfv(GL_LIGHT1, GL_AMBIENT, currentLighting->ambient);
+	glLightfv(GL_LIGHT1, GL_DIFFUSE, currentLighting->diffuse);
+	glLightfv(GL_LIGHT1, GL_SPECULAR, currentLighting->specular);
+	glLightfv(GL_LIGHT1, GL_POSITION, currentLighting->position);
+
+
+	Sphere_Vertex();
+	Modify_Vertex();
+	Sphere_Face();
+	face_normal_computation();
+	vertex_normal_computation();
+}
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(60.0, 1.0, 1.0, 1000);
+}
+
+void display(void)
+{
+	float	x, y, z;
+
+	glClearColor(0.0, 0.0, 0.0, 0.0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	x = camera_radius * cos(moveY) * cos(moveX);
+	y = camera_radius * cos(moveY) * sin(moveX);
+	z = camera_radius * sin(moveY);
+
+
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+
+	gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+
+	glPushMatrix();
+	glTranslatef(0.0, -1.0, 0.0);
+
+	currentMaterials = &redPlasticMaterials;
+	glMaterialfv(GL_FRONT, GL_AMBIENT, currentMaterials->ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, currentMaterials->diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, currentMaterials->specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, currentMaterials->shininess);
+
+	draw_object();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(0.0, 1.0, 0.0);
+
+	currentMaterials = &bluePlasticMaterials;
+	glMaterialfv(GL_FRONT, GL_AMBIENT, currentMaterials->ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, currentMaterials->diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, currentMaterials->specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, currentMaterials->shininess);
+
+	draw_object();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(1.0, 0.0, 0.0);
+
+	currentMaterials = &greenPlasticMaterials;
+	glMaterialfv(GL_FRONT, GL_AMBIENT, currentMaterials->ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, currentMaterials->diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, currentMaterials->specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, currentMaterials->shininess);
+
+	draw_object();
+	glPopMatrix();
+
+	glPushMatrix();
+	glTranslatef(-1.0, 0.0, 0.0);
+
+	currentMaterials = &yellowPlasticMaterials;
+	glMaterialfv(GL_FRONT, GL_AMBIENT, currentMaterials->ambient);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, currentMaterials->diffuse);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, currentMaterials->specular);
+	glMaterialf(GL_FRONT, GL_SHININESS, currentMaterials->shininess);
+
+	draw_object();
+	glPopMatrix();
+
+
+	glFlush();
+	glutSwapBuffers();
+}
+
+
+void SpecialKey(int key, int x, int y) {
+	switch (key) {
+	case GLUT_KEY_LEFT:		moveX -= 0.01;
+		break;
+	case GLUT_KEY_RIGHT:	moveX += 0.01;
+		break;
+	case GLUT_KEY_UP:		moveY += 0.01;
+		break;
+	case GLUT_KEY_DOWN:		moveY -= 0.01;
+		break;
+	case GLUT_KEY_F1:		Radius += 0.1;
+		break;
+	case GLUT_KEY_F2:		Radius -= 0.1;
+		break;
+	default:				break;
+	}
+	if (moveX > 2.0 * PI)
+		moveX -= (2.0 * PI);
+	else if (theta < 0.0)
+		moveX += (2.0 * PI);
+	glutPostRedisplay();
+
+}
+
+
+int main(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
+	glutInitWindowPosition(100, 100);
+	glutInitWindowSize(500, 500);
+	glutCreateWindow("Four Apples with different color");
+	init();
+	glutDisplayFunc(display);
+	glutSpecialFunc(SpecialKey);
+	glutReshapeFunc(reshape);
+	glutIdleFunc(display);
+	glutMainLoop();
+	return 0;
+}
+
