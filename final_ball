@@ -27,6 +27,8 @@ int count = 0;
 int bar1_x = 600, bar1_y = 50;
 int bar2_x = 600, bar2_y = 870;
 
+
+
 int MAX_black_num = 10;
 int counting = 0;
 
@@ -54,11 +56,10 @@ void init(void) {
 	//moving_ball.x = width / 2;
 	//moving_ball.y = height / 4;
 	moving_ball.x = 600;
-	moving_ball.y = 810;
+	moving_ball.y = 110;
 
-	velocity.x = 0.0;
+	velocity.x = 0.5;
 	velocity.y = -1.0;
-
 
 	//  컨트롤바 초기좌표
 	bar1.x = bar1_x; bar1.y = bar1_y;
@@ -222,7 +223,7 @@ void Modeling_Circle(float radius, Point CC) {
 }
 
 
-void Collision_brick(float x, float y)
+bool Collision_brick(float x, float y)
 {
 
 	// 충돌 여부 판단
@@ -230,6 +231,7 @@ void Collision_brick(float x, float y)
 		x <= moving_ball.x + moving_ball_radius && x +brick_widht/2 >= moving_ball.x + moving_ball_radius) // L
 	{
 		velocity.x *= -1;
+		return true;
 	}
 
 	
@@ -237,35 +239,38 @@ void Collision_brick(float x, float y)
 		x+brick_widht >= moving_ball.x - moving_ball_radius && x + brick_widht - brick_widht / 2 <= moving_ball.x - moving_ball_radius) //R
 	{
 		velocity.x *= -1;
+		return true;
 	}
 	
 	if (x <= moving_ball.x + moving_ball_radius && x + brick_widht >= moving_ball.x - moving_ball_radius &&
 		y <= moving_ball.y + moving_ball_radius && y + brick_height/2 >= moving_ball.y) //D
 	{
 		velocity.y *= -1;
+		return true;
 	}
 	
 	if (x <= moving_ball.x + moving_ball_radius && x + brick_widht >= moving_ball.x - moving_ball_radius &&
-		y+brick_height >= moving_ball.y - moving_ball_radius && y +brick_height - brick_height / 2 <= moving_ball.y) //U
+		y + brick_height >= moving_ball.y - moving_ball_radius && y + brick_height - brick_height / 2 <= moving_ball.y) //U
 	{
 		velocity.y *= -1;
+		return true;
 	}
+	return false;
 }
 
 
 void create_black()
 {
 	//glColor3f(0.5, 0.5, 0.5);
-	//float x = 600; float y = 500;
+	//float x = 550; float y = 450;
 	//glRecti(x, y, x + brick_widht, y + brick_height);
 	//Collision_brick(x,y);
 
 	int tempx, tempy;
 	int x, y;
 	srand(time(NULL));
-	//int x, y;
 
-	/*while (counting < MAX_black_num)
+	while (counting < MAX_black_num)
 	{
 		tempx = rand() % 7;
 		tempy = rand() % 10;
@@ -277,17 +282,13 @@ void create_black()
 			x = 400 + tempy * brick_widht;
 			y = -250 + height - (tempx + 1) * brick_height;
 
-			glColor3f(0.5, 0.5, 0.5);
-			glRecti(x, y, x + brick_widht, y + brick_height);
-
-
 			counting++;
 
 			std::cout << x << " " << y << " " << counting << std::endl;
 		}
-	}*/
+	}
 
-
+	/*
 	for (int i = 0; i<brickRows; ++i)
 	{
 		for(int j=0; j< brickCols;j++)
@@ -305,7 +306,36 @@ void create_black()
 			}
 		}
 	}
+	*/
 
+}
+
+void print_brick()
+{
+	for (int i = 0; i < brickRows; i++)
+	{
+		for (int j = 0; j < brickCols; j++)
+		{
+			if(bricks[i][j] == true)
+			{
+				int x = 400 + j * brick_widht;
+				int y = -250 + height - (i + 1) * brick_height;
+
+				glColor3f(0.5, 0.5, 0.5);
+				glRecti(x, y, x + brick_widht, y + brick_height);
+
+				bool temp = Collision_brick(x, y);
+				if(temp == true)
+				{
+					counting--;
+					bricks[i][j] = false;
+					ball_speed += 1;
+				}
+
+			}
+
+		}
+	}
 
 }
 
@@ -485,6 +515,7 @@ void RenderScene(void) {
 		object_zone();
 		Collision_bar();
 		create_black();
+		print_brick();
 		end_game();
 
 		glutSwapBuffers();
